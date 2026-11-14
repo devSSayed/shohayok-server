@@ -40,6 +40,16 @@ app.post('/create-event', (req, res) => {
     res.send(result)
 })
 
+app.get('/allEvents', async (req, res) => {
+    const result = await upComingEvents.find().toArray()
+    res.send(result)
+})
+
+app.get('/recentEvents', async (req, res) => {
+    const result = await upComingEvents.find().limit(6).toArray()
+    res.send(result)
+})
+
 app.get('/', (req, res) => {
     res.send({
         message: "Hello, World! " + PORT
