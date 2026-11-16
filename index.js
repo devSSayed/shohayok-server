@@ -1,5 +1,5 @@
 import express from 'express'
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import 'dotenv/config'
 import cors from 'cors'
 
@@ -31,10 +31,10 @@ const db = mongoClient.db('shohayok_users')
 const upComingEvents = db.collection('upcoming_events')
 
 
-app.post('/create-event', (req, res) => {
+app.post('/create-event', async (req, res) => {
     const data = req.body
 
-    const result = upComingEvents.insertOne(data)
+    const result = await upComingEvents.insertOne(data)
 
     console.log(result);
     res.send(result)
@@ -45,8 +45,50 @@ app.get('/allEvents', async (req, res) => {
     res.send(result)
 })
 
+app.get('/event/:id', async (req, res) => {
+    const { id } = req.params
+
+    const result = await upComingEvents.findOne({ _id: new ObjectId(id) })
+
+    res.send(result)
+})
+
+app.get('/myEvents/:email', async (req, res) => {
+    const { email } = req.params
+
+    const result = await upComingEvents.find({ 'createdBy.email': email }).toArray()
+
+    res.send(result)
+})
+
+app.patch('/event/:id', async (req, res) => {
+    const { id } = req.params
+    const updatedData = req.body
+
+    const result = await upComingEvents.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData }
+    )
+
+    res.send(result)
+})
+
+app.delete('/event/:id', async (req, res) => {
+    const { id } = req.params
+
+    const result = await upComingEvents.deleteOne({ _id: new ObjectId(id) })
+
+    res.send(result)
+
+})
+
 app.get('/recentEvents', async (req, res) => {
-    const result = await upComingEvents.find().limit(6).toArray()
+
+    const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Dhaka'
+    }).format(new Date());
+
+    const result = await upComingEvents.find({ date: { $gte: today } }).sort({ date: 1 }).limit(6).toArray()
     res.send(result)
 })
 
