@@ -30,6 +30,8 @@ const db = mongoClient.db('shohayok_users')
 
 const upComingEvents = db.collection('upcoming_events')
 
+const joinedEvents = db.collection('joined-events')
+
 
 app.post('/create-event', async (req, res) => {
     const data = req.body
@@ -90,6 +92,36 @@ app.get('/recentEvents', async (req, res) => {
 
     const result = await upComingEvents.find({ date: { $gte: today } }).sort({ date: 1 }).limit(6).toArray()
     res.send(result)
+})
+
+
+app.post('/join-event', async (req, res) => {
+    const data = req.body
+
+    const result = await joinedEvents.insertOne(data)
+
+    console.log(result);
+    res.send(result)
+})
+
+app.get('/join-event/:email', async (req, res) => {
+    const { email } = req.params
+
+    const result = await joinedEvents.find({ 'joinedBy.email': email }).toArray()
+
+    res.send(result)
+})
+
+app.delete('/join-event/:id', async (req, res) => {
+    const { id } = req.params
+
+    const result = await joinedEvents.deleteOne({ _id: new ObjectId(id) })
+    if (result.deletedCount === 0) {
+        return res.status(404).send({ message: 'Join record not found' })
+    }
+
+    res.send(result)
+
 })
 
 app.get('/', (req, res) => {
