@@ -2,6 +2,7 @@ import express from 'express'
 import { MongoClient, ObjectId } from 'mongodb';
 import 'dotenv/config'
 import cors from 'cors'
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 
 const app = express()
@@ -33,7 +34,36 @@ const upComingEvents = db.collection('upcoming_events')
 const joinedEvents = db.collection('joined-events')
 
 
-app.post('/create-event', async (req, res) => {
+
+const verifyToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+
+    if(!authHeader){
+        return res.status(401).send({message: 'Unauthorized!'})
+    }
+
+    const token = authHeader.split(" ")[1]
+
+     if(!token){
+        return res.status(401).send({message: 'Unauthorized!'})
+    }
+
+    const JWKS = createRemoteJWKSet(new URL(`${process.env.FRONTED_URL}/api/auth/jwks`))
+
+    
+
+    try {
+        const {payload} = await jwtVerify(token, JWKS)
+        next();
+    } catch (error) {
+         return res.status(500).send({message: 'Server Error'})
+    }
+    
+}
+
+
+app.post('/create-event', verifyToken, async (req, res) => {
     const data = req.body
 
     const result = await upComingEvents.insertOne(data)
@@ -55,7 +85,7 @@ app.get('/event/:id', async (req, res) => {
     res.send(result)
 })
 
-app.get('/myEvents/:email', async (req, res) => {
+app.get('/myEvents/:email', verifyToken, async (req, res) => {
     const { email } = req.params
 
     const result = await upComingEvents.find({ 'createdBy.email': email }).toArray()
@@ -63,7 +93,7 @@ app.get('/myEvents/:email', async (req, res) => {
     res.send(result)
 })
 
-app.patch('/event/:id', async (req, res) => {
+app.patch('/event/:id', verifyToken, async (req, res) => {
     const { id } = req.params
     const updatedData = req.body
 
@@ -75,7 +105,7 @@ app.patch('/event/:id', async (req, res) => {
     res.send(result)
 })
 
-app.delete('/event/:id', async (req, res) => {
+app.delete('/event/:id', verifyToken, async (req, res) => {
     const { id } = req.params
 
     const result = await upComingEvents.deleteOne({ _id: new ObjectId(id) })
@@ -95,7 +125,7 @@ app.get('/recentEvents', async (req, res) => {
 })
 
 
-app.post('/join-event', async (req, res) => {
+app.post('/join-event', verifyToken, async (req, res) => {
     const data = req.body
 
     const result = await joinedEvents.insertOne(data)
@@ -104,7 +134,7 @@ app.post('/join-event', async (req, res) => {
     res.send(result)
 })
 
-app.get('/join-event/:email', async (req, res) => {
+app.get('/join-event/:email', verifyToken, async (req, res) => {
     const { email } = req.params
 
     const result = await joinedEvents.find({ 'joinedBy.email': email }).toArray()
@@ -112,7 +142,7 @@ app.get('/join-event/:email', async (req, res) => {
     res.send(result)
 })
 
-app.delete('/join-event/:id', async (req, res) => {
+app.delete('/join-event/:id', verifyToken, async (req, res) => {
     const { id } = req.params
 
     const result = await joinedEvents.deleteOne({ _id: new ObjectId(id) })
